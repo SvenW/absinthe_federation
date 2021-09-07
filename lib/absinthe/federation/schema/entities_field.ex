@@ -76,20 +76,28 @@ defmodule Absinthe.Federation.Schema.EntitiesField do
           }
         }
       },
-      middleware: [{Absinthe.Resolution, &__MODULE__.resolver/3}],
+      middleware: [__MODULE__],
       arguments: build_arguments()
     }
   end
 
-  def resolver(parent, %{representations: representations}, resolution) do
-    resolvers =
-      Enum.map(representations, &entity_accumulator(&1, parent, resolution))
-      |> Enum.map(fn {_, fun} ->
-        {:ok, r} = fun.(resolution, [])
-        r
-      end)
+  def call(%{state: :unresolved} = res, _args) do
+    resolutions = resolver(res.source, res.arguments, res)
 
-    {:ok, resolvers}
+    value = Enum.map(resolutions, fn r -> r.value end)
+
+    %{
+      res
+      | state: :resolved,
+        value: value
+    }
+  end
+
+  def resolver(parent, %{representations: representations}, resolution) do
+    Enum.map(representations, &entity_accumulator(&1, parent, resolution))
+    |> Enum.map(fn {_, fun} ->
+      Absinthe.Resolution.call(resolution, fun)
+    end)
   end
 
   defp entity_accumulator(representation, parent, %{schema: schema} = resolution) do
