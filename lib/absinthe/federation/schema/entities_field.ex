@@ -82,25 +82,24 @@ defmodule Absinthe.Federation.Schema.EntitiesField do
   end
 
   def resolver(parent, %{representations: representations}, resolution) do
-    Enum.reduce_while(representations, {:ok, []}, &entity_accumulator(&1, &2, parent, resolution))
+    resolvers =
+      Enum.map(representations, &entity_accumulator(&1, parent, resolution))
+      |> Enum.map(fn {_, fun} ->
+        {:ok, r} = fun.(resolution, [])
+        r
+      end)
+
+    {:ok, resolvers}
   end
 
-  defp entity_accumulator(representation, {:ok, entities}, parent, %{schema: schema} = resolution) do
+  defp entity_accumulator(representation, parent, %{schema: schema} = resolution) do
     typename = Map.get(representation, "__typename")
 
-    schema
-    |> Absinthe.Schema.lookup_type(typename)
-    |> resolve_representation(parent, representation, resolution)
-    |> case do
-      {:ok, entity} ->
-        {:cont, {:ok, entities ++ [entity]}}
-
-      {:error, _} = error ->
-        {:halt, error}
-    end
+    {Absinthe.Resolution,
+     schema
+     |> Absinthe.Schema.lookup_type(typename)
+     |> resolve_representation(parent, representation, resolution)}
   end
-
-  defp entity_accumulator(_representation, result, _parent, _schema), do: result
 
   defp resolve_representation(
          %struct_type{fields: fields},
@@ -127,10 +126,10 @@ defmodule Absinthe.Federation.Schema.EntitiesField do
     |> List.first()
     |> case do
       {_, resolve_ref_func} when is_function(resolve_ref_func, 2) ->
-        resolve_ref_func.(args, resolution)
+        fn _, _ -> resolve_ref_func.(args, resolution) end
 
       {_, resolve_ref_func} when is_function(resolve_ref_func, 3) ->
-        resolve_ref_func.(parent, args, resolution)
+        fn _, _ -> resolve_ref_func.(parent, args, resolution) end
 
       _ ->
         {:ok, representation}

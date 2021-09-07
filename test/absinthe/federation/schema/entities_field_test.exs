@@ -51,10 +51,14 @@ defmodule Absinthe.Federation.Schema.EntitiesFieldTest do
       end
 
       object :product do
+        key_fields("upc")
         field :upc, non_null(:string)
+        field :apa, non_null(:string), resolve: fn _, _, _ -> {:ok, "BANANA"} end
 
         field :_resolve_reference, :product do
-          resolve(fn _, args, _ -> {:ok, args} end)
+          resolve(fn _, args, _ ->
+            {:ok, args}
+          end)
         end
       end
     end
@@ -69,6 +73,33 @@ defmodule Absinthe.Federation.Schema.EntitiesFieldTest do
         })
 
       assert args == %{__typename: "Product", upc: upc}
+    end
+
+    test "resolves all types fulfilling the _Entity type" do
+      query = """
+        query{
+          _entities(representations:[
+            {
+              __typename: "Product",
+              upc: "123"
+            },
+            {
+              __typename: "Product",
+              upc: "456"
+            }
+            ]){
+              ...on Product{
+                upc
+                apa
+              }
+          }
+        }
+      """
+
+      {:ok, resp} = Absinthe.run(query, ResolverSchema, variables: %{})
+
+      assert %{data: %{"_entities" => [%{"upc" => "123", "apa" => "BANANA"}, %{"apa" => "BANANA", "upc" => "456"}]}} =
+               resp
     end
   end
 
