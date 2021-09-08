@@ -45,6 +45,7 @@ defmodule Absinthe.Federation.Schema.EntitiesFieldTest do
     defmodule ResolverSchema do
       use Absinthe.Schema
       use Absinthe.Federation.Schema
+      import Absinthe.Resolution.Helpers, only: [async: 1]
 
       query do
         field :test, :string
@@ -53,11 +54,18 @@ defmodule Absinthe.Federation.Schema.EntitiesFieldTest do
       object :product do
         key_fields("upc")
         field :upc, non_null(:string)
-        field :apa, non_null(:string), resolve: fn _, _, _ -> {:ok, "BANANA"} end
+
+        field :apa, non_null(:string),
+          resolve: fn _, _, _ ->
+            {:ok, "BANANA"}
+          end
 
         field :_resolve_reference, :product do
           resolve(fn _, args, _ ->
-            {:ok, args}
+            async(fn ->
+              IO.puts("RESOLVE PROD #{inspect(args)}")
+              {:ok, args}
+            end)
           end)
         end
       end

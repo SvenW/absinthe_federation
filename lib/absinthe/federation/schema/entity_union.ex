@@ -41,6 +41,11 @@ defmodule Absinthe.Federation.Schema.EntityUnion do
     |> String.to_existing_atom()
   end
 
+  def resolve_type(m, _resolution) do
+    IO.puts("RESOLVE TYPE #{inspect(m)}")
+    :product
+  end
+
   defp types(node) do
     {_node, types} = Blueprint.postwalk(node, [], &collect_types/2)
 
