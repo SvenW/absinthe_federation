@@ -76,7 +76,7 @@ defmodule Absinthe.Federation.Schema.EntitiesField do
           }
         }
       },
-      middleware: [__MODULE__],
+      middleware: [{Absinthe.Resolution, &__MODULE__.resolver/3}],
       arguments: build_arguments()
     }
   end
@@ -94,10 +94,19 @@ defmodule Absinthe.Federation.Schema.EntitiesField do
   end
 
   def resolver(parent, %{representations: representations}, resolution) do
-    Enum.map(representations, &entity_accumulator(&1, parent, resolution))
-    |> Enum.map(fn {_, fun} ->
-      Absinthe.Resolution.call(resolution, fun)
-    end)
+    IO.puts("CURRENT OP #{inspect(Absinthe.Blueprint.current_operation(resolution.schema.__absinthe_blueprint__()))}")
+
+    funs =
+      Enum.map(representations, &entity_accumulator(&1, parent, resolution))
+      |> Enum.map(fn {_, fun} ->
+        # # Absinthe.Resolution.call(resolution, fun)
+        # %Absinthe.Resolution{
+        #   middleware: [{Absinthe.Resolution, fun}]
+        # }
+        fun
+      end)
+
+    {:middleware, Absinthe.Federation.Middleware, funs}
   end
 
   defp entity_accumulator(representation, parent, %{schema: schema} = resolution) do

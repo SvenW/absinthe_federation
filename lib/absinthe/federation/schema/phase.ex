@@ -28,6 +28,7 @@ defmodule Absinthe.Federation.Schema.Phase do
   defp collect_types(%Schema.ObjectTypeDefinition{identifier: :query, fields: fields} = node) do
     service_field = ServiceField.build()
     entities_field = EntitiesField.build()
+
     %{node | fields: [service_field, entities_field] ++ fields}
   end
 

@@ -7,6 +7,7 @@ defmodule Absinthe.Federation.Schema.EntitiesFieldTest do
   alias Absinthe.Blueprint.TypeReference.NonNull
 
   alias Absinthe.Federation.Schema.EntitiesField
+  import Absinthe.Resolution.Helpers, only: [async: 1]
 
   describe "build" do
     test "builds field definition" do
@@ -48,6 +49,17 @@ defmodule Absinthe.Federation.Schema.EntitiesFieldTest do
 
       query do
         field :test, :string
+
+        field :product, :product do
+          arg(:upc, non_null(:string))
+
+          resolve(fn _, args, _ ->
+            async(fn ->
+              IO.puts("ASYNC RESOLVER IN HERE")
+              {:ok, args}
+            end)
+          end)
+        end
       end
 
       object :product do
@@ -57,7 +69,10 @@ defmodule Absinthe.Federation.Schema.EntitiesFieldTest do
 
         field :_resolve_reference, :product do
           resolve(fn _, args, _ ->
-            {:ok, args}
+            async(fn ->
+              IO.puts("ASYNC RESOLVER")
+              {:ok, args}
+            end)
           end)
         end
       end
